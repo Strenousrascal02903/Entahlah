@@ -31,8 +31,12 @@ class HomeController extends GetxController {
   var selectedPlaylistId = ''.obs;
 
   String currentLyric = '';
+  var userProfile = {}.obs; // Stores user profile data
+  var isProfileLoading =
+      false.obs; // Controls the loading state for the profile
 
   var currentLyricIndex = 0.obs;
+  var selectedIndex = 0.obs;
 
   var audioTitle = ''.obs;
   var thumbnailUrl = ''.obs;
@@ -214,6 +218,45 @@ class HomeController extends GetxController {
       if (isLoading.value) {
         isLoading.value = false; // Set loading to false here
       }
+    }
+  }
+
+  Future<void> getUserProfile(String userId) async {
+    final url = Uri.parse('https://api.spotify.com/v1/users/$userId');
+
+    try {
+      isProfileLoading.value = true;
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${spotifyAccessToken.value}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Parse JSON and update userProfile observable
+        userProfile.value = json.decode(response.body);
+      } else {
+        // Handle error response
+        print('Failed to load user profile: ${response.statusCode}');
+        Get.snackbar(
+          'Error',
+          'Failed to load user profile',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (e) {
+      // Handle any exceptions
+      print('Error fetching user profile: $e');
+      Get.snackbar(
+        'Error',
+        'Something went wrong while fetching user profile',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {
+      isProfileLoading.value = false;
     }
   }
 
