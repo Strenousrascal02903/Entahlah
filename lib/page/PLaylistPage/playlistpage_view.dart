@@ -20,6 +20,8 @@ class PlaylistPageView extends StatelessWidget {
     Future<void> _refresh() async {
       await controller.getUserPlaylist(userId);
       await controller.getUserProfile(userId);
+      await controller.fetchRecommendations(
+          seedArtists: "7pbDxGE6nQSZVfiFdq9lOL");
     }
 
     // Fetch user profile and playlist on page load
@@ -73,57 +75,62 @@ class PlaylistPageView extends StatelessWidget {
 
   Widget _buildPlaylistPage(HomeController controller, String userId,
       Future<void> Function() _refresh, BuildContext context) {
-    return Obx(() {
-      // Cek apakah sedang loading
-      if (controller.isLoading.value) {
-        return Expanded(
-          child: Center(
-            child: CircularProgressIndicator(color: WhiteColor),
-          ),
-        );
-      }
+    final storage = GetStorage();
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: Obx(() {
+        // Cek apakah sedang loading
+        if (controller.isLoading.value) {
+          return Expanded(
+            child: Center(
+              child: CircularProgressIndicator(color: WhiteColor),
+            ),
+          );
+        }
 
-      var userProfile = controller.userProfile.value;
-      String displayName = userProfile['display_name'] ?? 'Guest';
-      print(userProfile['display_name']);
+        var userProfile = controller.userProfile.value;
+        String displayName = userProfile['display_name'] ?? 'Guest';
 
-      return Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  alignment: Alignment.bottomLeft,
-                  margin: EdgeInsets.only(top: 18, left: 10),
-                  child: Text(
-                    "Hello, $displayName",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: WhiteColor,
+        return Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Menampilkan nama pengguna
+                  Container(
+                    width: double.infinity,
+                    alignment: Alignment.bottomLeft,
+                    margin: const EdgeInsets.only(top: 18, left: 10),
+                    child: Text(
+                      "Hello, $displayName",
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: WhiteColor,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  height: AppResponsive().screenHeight(context) * 0.02,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                            text: 'Your Playlist', style: textMediumWhite16),
-                      ],
+                  SizedBox(
+                    height: AppResponsive().screenHeight(context) * 0.02,
+                  ),
+
+                  // Judul Playlist
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                              text: 'Your Playlist', style: textMediumWhite16),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _refresh,
+
+                  // Daftar playlist
+                  Expanded(
                     child: Obx(() {
                       if (controller.dataPlaylists.isEmpty) {
                         return Center(
@@ -132,89 +139,196 @@ class PlaylistPageView extends StatelessWidget {
                         );
                       }
 
-                      return GridView.builder(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 2.5,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                        ),
-                        itemCount: controller.dataPlaylists.length,
-                        itemBuilder: (context, index) {
-                          var playlist = controller.dataPlaylists[index];
-                          var thumbnailUrl = playlist['images'] != null
-                              ? playlist['images'][0]['url']
-                              : '';
-                          String playlistName = playlist['name'];
-                          String playlistId = playlist['id'];
+                      return ListView(
+                        children: [
+                          // GridView untuk Playlist
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 2.5,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                            ),
+                            itemCount: controller.dataPlaylists.length,
+                            itemBuilder: (context, index) {
+                              var playlist = controller.dataPlaylists[index];
+                              var thumbnailUrl = playlist['images'] != null
+                                  ? playlist['images'][0]['url']
+                                  : '';
+                              String playlistName = playlist['name'];
+                              String playlistId = playlist['id'];
 
-                          return GestureDetector(
-                            onTap: () async {
-                              GetStorage().write('playlistName', playlistName);
-                              controller.selectedPlaylistId.value = playlistId;
-                              Get.toNamed(Routes.HOME_PAGE);
-                            },
-                            child: Card(
-                              color: BlueGrayColor800,
-                              elevation: 4,
-                              child: Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: thumbnailUrl.isNotEmpty
-                                          ? Image.network(
-                                              thumbnailUrl,
-                                              width: 60,
-                                              height: 80,
-                                              fit: BoxFit.cover,
-                                            )
-                                          : Image.asset(
-                                              'assets/images/default.png',
-                                              width: 60,
-                                              height: 80,
-                                              fit: BoxFit.cover,
+                              return GestureDetector(
+                                onTap: () async {
+                                  GetStorage()
+                                      .write('playlistName', playlistName);
+                                  controller.selectedPlaylistId.value =
+                                      playlistId;
+                                  Get.toNamed(Routes.HOME_PAGE);
+                                },
+                                child: Card(
+                                  color: BlueGrayColor800,
+                                  elevation: 4,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Row(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: thumbnailUrl.isNotEmpty
+                                              ? Image.network(
+                                                  thumbnailUrl,
+                                                  width: 60,
+                                                  height: 80,
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : Image.asset(
+                                                  'assets/images/default.png',
+                                                  width: 60,
+                                                  height: 80,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                        ),
+                                        Flexible(
+                                          child: Container(
+                                            decoration: const BoxDecoration(
+                                              borderRadius: BorderRadius.only(
+                                                bottomLeft: Radius.circular(10),
+                                                bottomRight:
+                                                    Radius.circular(10),
+                                              ),
                                             ),
-                                    ),
-                                    Flexible(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.only(
-                                            bottomLeft: Radius.circular(10),
-                                            bottomRight: Radius.circular(10),
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Text(
+                                              playlistName,
+                                              style: textSemiBoldWhite12,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ),
-                                        padding: EdgeInsets.all(8),
-                                        child: Text(
-                                          playlistName,
-                                          style: textSemiBoldWhite12,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Bagian untuk rekomendasi
+                          Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: RichText(
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Recommended for You',
+                                    style: textMediumWhite16,
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        },
+                          ),
+
+                          // Daftar rekomendasi
+                          Obx(() {
+                            if (controller.recommendedTracks.isEmpty) {
+                              return Center(
+                                child: Text('No recommendations found',
+                                    style: textMediumWhite16),
+                              );
+                            }
+
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: controller.recommendedTracks.length,
+                              itemBuilder: (context, index) {
+                                var track = controller.recommendedTracks[index];
+                                var trackName = track['name'];
+                                var artistName = track['artists'][0]['name'];
+                                String trackId = track['id'] ?? '';
+                                String artist = track['artists'][0]['name'];
+
+                                var thumbnailUrl =
+                                    track['album']['images'] != null
+                                        ? track['album']['images'][0]['url']
+                                        : '';
+
+                                return ListTile(
+                                  leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: thumbnailUrl.isNotEmpty
+                                        ? Image.network(
+                                            thumbnailUrl,
+                                            width: 60,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Image.asset(
+                                            'assets/images/default.png',
+                                            width: 60,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                          ),
+                                  ),
+                                  title: Text(
+                                    trackName,
+                                    style: textMediumWhite16,
+                                  ),
+                                  subtitle: Text(
+                                    artistName,
+                                    style: textSemiBoldWhite12,
+                                  ),
+                                  onTap: () {
+                                    if (trackId.isNotEmpty) {
+                                      controller.playAudio(
+                                          spotifyTrackId: trackId);
+                                      controller.fetchAndSetLyrics(
+                                          artist, trackName);
+
+                                      storage.write('audioTitle', trackName);
+                                      storage.write('thumbnail', thumbnailUrl);
+                                      storage.write('artist', artist);
+
+                                      controller.audioTitle.value = trackName;
+                                      controller.thumbnailUrl.value =
+                                          thumbnailUrl;
+                                      controller.isPlayerHidden.value = false;
+                                      Get.toNamed(Routes.AUDIO_PLAYER_PAGE);
+                                    } else {
+                                      print('Track ID not found');
+                                    }
+                                  },
+                                );
+                              },
+                            );
+                          }),
+                        ],
                       );
                     }),
                   ),
-                ),
-                Obx(() => !controller.isPlayerHidden.value
-                    ? SizedBox(
-                        height: AppResponsive().screenHeight(context) * 0.06,
-                      )
-                    : Container()),
-              ],
+
+                  // Spacer untuk player jika ada
+                  Obx(() => !controller.isPlayerHidden.value
+                      ? SizedBox(
+                          height: AppResponsive().screenHeight(context) * 0.06,
+                        )
+                      : Container()),
+                ],
+              ),
             ),
-          ),
-          _buildPlayer(controller, context),
-        ],
-      );
-    });
+
+            // Player
+            _buildPlayer(controller, context),
+          ],
+        );
+      }),
+    );
   }
 
   Widget _buildPlayer(HomeController controller, BuildContext context) {

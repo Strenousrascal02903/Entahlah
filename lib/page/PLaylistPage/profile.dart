@@ -15,11 +15,18 @@ class ProfilePageView extends StatelessWidget {
       body: SafeArea(
         child: Obx(() {
           if (controller.isProfileLoading.value) {
-            return Center(child: CircularProgressIndicator());
+            return Container(
+                color: BlueGrayColor,
+                child: Center(
+                    child: CircularProgressIndicator(
+                  color: WhiteColor,
+                )));
           }
 
           if (controller.userProfile.isEmpty) {
-            return Center(child: Text('No user profile data'));
+            return Container(
+                color: BlueGrayColor,
+                child: Center(child: Text('No user profile data')));
           }
 
           final userProfile = controller.userProfile.value;
@@ -39,7 +46,7 @@ class ProfilePageView extends StatelessWidget {
               Expanded(
                 child: Container(
                   color: BlueGrayColor,
-                  child: _buildProfileOptions(),
+                  child: _buildProfileOptions(controller),
                 ),
               ),
             ],
@@ -90,7 +97,7 @@ class ProfilePageView extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileOptions() {
+  Widget _buildProfileOptions(HomeController controller) {
     final storage = GetStorage();
     final options = [
       {'icon': Icons.exit_to_app, 'title': 'Sign Out'},
@@ -110,6 +117,7 @@ class ProfilePageView extends StatelessWidget {
           trailing: Icon(Icons.chevron_right),
           onTap: () {
             if (option['title'] == 'Sign Out') {
+              controller.selectedIndex.value = 0;
               storage.remove('spotifyUserId');
               Get.offAllNamed(Routes.INPUT_PAGE);
             } else {

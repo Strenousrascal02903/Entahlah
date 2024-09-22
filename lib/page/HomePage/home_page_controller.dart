@@ -11,6 +11,7 @@ import 'package:kana_kit/kana_kit.dart';
 
 class HomeController extends GetxController {
   var playlists = <dynamic>[].obs;
+  var recommendedTracks = <dynamic>[].obs;
   var dataPlaylists = <dynamic>[].obs;
   var spotifyResults = <dynamic>[].obs;
   var isLoading = false.obs;
@@ -219,6 +220,52 @@ class HomeController extends GetxController {
         isLoading.value = false; // Set loading to false here
       }
     }
+  }
+
+  Future<void> fetchRecommendations(
+      {String? seedArtists, String? seedGenres, String? seedTracks}) async {
+    if (spotifyAccessToken.value.isEmpty) {
+      await fetchSpotifyToken();
+    }
+
+    try {
+      // URL endpoint dengan query parameters untuk seed_artists, seed_genres, atau seed_tracks
+      final url = Uri.https('api.spotify.com', '/v1/recommendations', {
+        'limit': '10', // Anda bisa mengubah jumlah rekomendasi di sini
+        'seed_artists': seedArtists ?? '',
+        'seed_genres': seedGenres ?? '',
+        'seed_tracks': seedTracks ?? '',
+      });
+
+      // Mengirim request ke API Spotify
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer ${spotifyAccessToken.value}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // Parse JSON dan update rekomendasi
+        final recommendations = jsonDecode(response.body)['tracks'] as List;
+        recommendedTracks.value = recommendations;
+        print('Recommendations fetched successfully: $recommendations');
+      } else {
+        print('Failed to load recommendations: ${response.statusCode}');
+        Get.snackbar(
+          'Error',
+          'Failed to load recommendations',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+    } catch (e) {
+      print('Error fetching recommendations: $e');
+      Get.snackbar(
+        'Error',
+        'Something went wrong while fetching recommendations',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } finally {}
   }
 
   Future<void> getUserProfile(String userId) async {
